@@ -54,15 +54,7 @@ pipeline {
         stage('Smoke Test Container') {
             steps {
                 withEnv(["TEST_IMAGE=${env.TEST_IMAGE}"]) {
-                    bat 'powershell -NoProfile -Command "& { ' +
-                        '$output = docker run --rm %TEST_IMAGE% add 2 3; ' +
-                        'Write-Host ''Container output:''; ' +
-                        'Write-Host $output; ' +
-                        'if ($output -notmatch ''Result:\\s+5'') { ' +
-                            'Write-Error ''Unexpected calculator result''; ' +
-                            'exit 1 ' +
-                        '} ' +
-                    '}"'
+                    bat '''powershell -NoProfile -Command "$output = docker run --rm %TEST_IMAGE% add 2 3; Write-Host 'Container output:'; Write-Host $output; if ($output -notmatch 'Result\\s+5') { Write-Error 'Unexpected calculator result'; exit 1 }"'''
                 }
             }
         }
