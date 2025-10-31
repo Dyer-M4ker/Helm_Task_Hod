@@ -27,11 +27,11 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
                     withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
-                        bat """
+                        bat '''
                         powershell -NoProfile -Command ^
                           "$Env:DOCKERHUB_PASSWORD | docker login --username $Env:DOCKERHUB_USER --password-stdin"
                         docker pull %SOURCE_IMAGE%
-                        """
+                        '''
                     }
                 }
             }
@@ -53,7 +53,7 @@ pipeline {
 
         stage('Smoke Test Container') {
             steps {
-                bat """
+                bat '''
                 powershell -NoProfile -Command ^
                   "$output = docker run --rm %TEST_IMAGE% add 2 3; ^
                    Write-Host 'Container output:'; ^
@@ -62,7 +62,7 @@ pipeline {
                        Write-Error 'Unexpected calculator result'; ^
                        exit 1 ^
                    }"
-                """
+                '''
             }
         }
     }
@@ -70,13 +70,13 @@ pipeline {
     post {
         always {
             script {
-                bat """
+                bat '''
                 docker image inspect %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% >nul 2>&1 && docker image rm %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% 2>nul
                 if not "%TEST_IMAGE%"=="" (
                     docker image inspect %TEST_IMAGE% >nul 2>&1 && docker image rm %TEST_IMAGE% 2>nul
                 )
                 docker logout >nul 2>&1
-                """
+                '''
             }
         }
     }
