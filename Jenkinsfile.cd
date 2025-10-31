@@ -6,15 +6,13 @@ pipeline {
     }
 
     parameters {
-        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Harbor image tag to deploy')
-        string(name: 'TEST_PROJECT', defaultValue: 'calculator-test', description: 'Harbor project for test promotion')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker Hub tag to promote')
+        string(name: 'TEST_TAG', defaultValue: 'test', description: 'Suffix for test deployment tag')
     }
 
     environment {
-        HARBOR_REGISTRY = 'harbor.local'
-        HARBOR_PROJECT = 'calculator'
-        HARBOR_REPOSITORY = 'calculator-cli'
-        HARBOR_CREDENTIALS = 'harbor-robot'
+        DOCKERHUB_REPOSITORY = 'dyer-m4ker/helm-task-hod'
+        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
     }
 
     stages {
@@ -26,10 +24,10 @@ pipeline {
 
         stage('Docker Login & Pull') {
             steps {
-                withCredentials([usernamePassword(credentialsId: env.HARBOR_CREDENTIALS, passwordVariable: 'HARBOR_PASSWORD', usernameVariable: 'HARBOR_USER')]) {
-                    withEnv(["SOURCE_IMAGE=${env.HARBOR_REGISTRY}/${env.HARBOR_PROJECT}/${env.HARBOR_REPOSITORY}:${params.IMAGE_TAG}"]) {
+                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                    withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
                         bat """
-                        docker login %HARBOR_REGISTRY% -u %HARBOR_USER% -p %HARBOR_PASSWORD%
+                        docker login -u %DOCKERHUB_USER% -p %DOCKERHUB_PASSWORD%
                         docker pull %SOURCE_IMAGE%
                         """
                     }
@@ -37,13 +35,13 @@ pipeline {
             }
         }
 
-        stage('Promote Image to Test') {
+        stage('Promote to Test Environment') {
             steps {
                 script {
-                    env.TEST_IMAGE = "${env.HARBOR_REGISTRY}/${params.TEST_PROJECT}/${env.HARBOR_REPOSITORY}:test-${env.BUILD_NUMBER}"
+                    env.TEST_IMAGE = "${env.DOCKERHUB_REPOSITORY}:${params.TEST_TAG}-${env.BUILD_NUMBER}"
                 }
-                withCredentials([usernamePassword(credentialsId: env.HARBOR_CREDENTIALS, passwordVariable: 'HARBOR_PASSWORD', usernameVariable: 'HARBOR_USER')]) {
-                    withEnv(["SOURCE_IMAGE=${env.HARBOR_REGISTRY}/${env.HARBOR_PROJECT}/${env.HARBOR_REPOSITORY}:${params.IMAGE_TAG}"]) {
+                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                    withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
                         bat """
                         docker tag %SOURCE_IMAGE% %TEST_IMAGE%
                         docker push %TEST_IMAGE%
@@ -71,11 +69,19 @@ pipeline {
 
     post {
         always {
-            bat """
-            docker logout %HARBOR_REGISTRY% 2>nul
-            docker image rm %TEST_IMAGE% 2>nul
-            docker image rm %HARBOR_REGISTRY%/%HARBOR_PROJECT%/%HARBOR_REPOSITORY%:%IMAGE_TAG% 2>nul
-            """
+            script {
+                if (env.DOCKERHUB_REPOSITORY && params.IMAGE_TAG) {
+                    bat """
+                    docker image rm %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% 2>nul
+                    """
+                }
+                if (env.TEST_IMAGE) {
+                    bat """
+                    docker image rm %TEST_IMAGE% 2>nul
+                    """
+                }
+                bat "docker logout" 
+            }
         }
     }
 }

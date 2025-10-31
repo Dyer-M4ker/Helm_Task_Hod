@@ -37,21 +37,19 @@ Configure the Jenkins toolchain with a JDK 17 installation labeled `Temurin-17` 
 
 ## Continuous Delivery (CD)
 
-`Jenkinsfile.cd` implements a basic CD pipeline that expects Docker and Harbor access on the Jenkins agent:
+`Jenkinsfile.cd` promotes images hosted on Docker Hub:
 
-1. Logs in to Harbor using stored credentials.
-2. Pulls an image tag from `harbor.local/calculator/calculator-cli`.
-3. Re-tags and pushes the image to a designated test project (default `calculator-test`).
-4. Launches the container and verifies the calculator CLI returns the expected result.
+1. Logs in with credentials stored in Jenkins (ID `dockerhub-credentials`).
+2. Pulls a source image tag (default `latest`) from `docker.io/dyer-m4ker/helm-task-hod`.
+3. Re-tags and pushes it with a build-specific test tag (e.g., `test-42`).
+4. Runs the container to smoke-test the calculator output.
 
-Provide Jenkins parameters:
+Pipeline parameters:
 
-- `IMAGE_TAG` (default `latest`) – the Harbor tag to deploy.
-- `TEST_PROJECT` – Harbor project used for the promoted tag.
+- `IMAGE_TAG` – Docker Hub tag to promote.
+- `TEST_TAG` – Prefix used for the generated test tag (`<TEST_TAG>-<BUILD_NUMBER>`).
 
-Create a Jenkins credential (`username/password`) with ID `harbor-robot` referencing a Harbor robot account.
-
-Refer to `docs/harbor-setup.md` for a Harbor installation walkthrough.
+Set up Docker Hub access following `docs/dockerhub-setup.md`.
 
 ## Usage
 
