@@ -25,11 +25,15 @@ pipeline {
         stage('Docker Login & Pull') {
             steps {
                 withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                    withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
-                        bat """
-                        powershell -NoProfile -Command "$Env:DOCKERHUB_PASSWORD | docker login --username $Env:DOCKERHUB_USER --password-stdin"
+                    withEnv([
+                            "REGISTRY_USER=${DOCKERHUB_USER}",
+                            "REGISTRY_PASS=${DOCKERHUB_PASSWORD}",
+                            "SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"
+                    ]) {
+                        bat '''
+                        powershell -NoProfile -Command "$env:REGISTRY_PASS | docker login --username $env:REGISTRY_USER --password-stdin"
                         docker pull %SOURCE_IMAGE%
-                        """
+                        '''
                     }
                 }
             }
