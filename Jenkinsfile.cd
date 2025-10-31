@@ -11,9 +11,10 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_REPOSITORY = 'dyer-m4ker/helm-task-hod'
-        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
-    }
+    DOCKERHUB_REPOSITORY = 'dyerm4ker/helm-task-hod'
+    DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
+}
+
 
     stages {
         stage('Checkout') {
