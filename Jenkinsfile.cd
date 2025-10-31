@@ -1,0 +1,81 @@
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+    }
+
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Harbor image tag to deploy')
+        string(name: 'TEST_PROJECT', defaultValue: 'calculator-test', description: 'Harbor project for test promotion')
+    }
+
+    environment {
+        HARBOR_REGISTRY = 'harbor.local'
+        HARBOR_PROJECT = 'calculator'
+        HARBOR_REPOSITORY = 'calculator-cli'
+        HARBOR_CREDENTIALS = 'harbor-robot'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Docker Login & Pull') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: env.HARBOR_CREDENTIALS, passwordVariable: 'HARBOR_PASSWORD', usernameVariable: 'HARBOR_USER')]) {
+                    withEnv(["SOURCE_IMAGE=${env.HARBOR_REGISTRY}/${env.HARBOR_PROJECT}/${env.HARBOR_REPOSITORY}:${params.IMAGE_TAG}"]) {
+                        bat """
+                        docker login %HARBOR_REGISTRY% -u %HARBOR_USER% -p %HARBOR_PASSWORD%
+                        docker pull %SOURCE_IMAGE%
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Promote Image to Test') {
+            steps {
+                script {
+                    env.TEST_IMAGE = "${env.HARBOR_REGISTRY}/${params.TEST_PROJECT}/${env.HARBOR_REPOSITORY}:test-${env.BUILD_NUMBER}"
+                }
+                withCredentials([usernamePassword(credentialsId: env.HARBOR_CREDENTIALS, passwordVariable: 'HARBOR_PASSWORD', usernameVariable: 'HARBOR_USER')]) {
+                    withEnv(["SOURCE_IMAGE=${env.HARBOR_REGISTRY}/${env.HARBOR_PROJECT}/${env.HARBOR_REPOSITORY}:${params.IMAGE_TAG}"]) {
+                        bat """
+                        docker tag %SOURCE_IMAGE% %TEST_IMAGE%
+                        docker push %TEST_IMAGE%
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Smoke Test Container') {
+            steps {
+                bat """
+                powershell -NoProfile -Command ^
+                  "$output = docker run --rm %TEST_IMAGE% add 2 3; ^
+                   Write-Host 'Container output:'; ^
+                   Write-Host $output; ^
+                   if ($output -notmatch 'Result:\\s+5') { ^
+                       Write-Error 'Unexpected calculator result'; ^
+                       exit 1 ^
+                   }"
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            bat """
+            docker logout %HARBOR_REGISTRY% 2>nul
+            docker image rm %TEST_IMAGE% 2>nul
+            docker image rm %HARBOR_REGISTRY%/%HARBOR_PROJECT%/%HARBOR_REPOSITORY%:%IMAGE_TAG% 2>nul
+            """
+        }
+    }
+}
