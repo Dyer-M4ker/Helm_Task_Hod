@@ -11,9 +11,9 @@ pipeline {
     }
 
     environment {
-    DOCKERHUB_REPOSITORY = 'dyerm4ker/helm-task-hod'
-    DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
-}
+        DOCKERHUB_REPOSITORY = 'dyerm4ker/helm-task-hod'
+        DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
+    }
 
 
     stages {
@@ -28,7 +28,8 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
                     withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
                         bat """
-                        docker login -u %DOCKERHUB_USER% -p %DOCKERHUB_PASSWORD%
+                        powershell -NoProfile -Command ^
+                          "$Env:DOCKERHUB_PASSWORD | docker login --username $Env:DOCKERHUB_USER --password-stdin"
                         docker pull %SOURCE_IMAGE%
                         """
                     }
@@ -41,13 +42,11 @@ pipeline {
                 script {
                     env.TEST_IMAGE = "${env.DOCKERHUB_REPOSITORY}:${params.TEST_TAG}-${env.BUILD_NUMBER}"
                 }
-                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                    withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
-                        bat """
-                        docker tag %SOURCE_IMAGE% %TEST_IMAGE%
-                        docker push %TEST_IMAGE%
-                        """
-                    }
+                withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
+                    bat """
+                    docker tag %SOURCE_IMAGE% %TEST_IMAGE%
+                    docker push %TEST_IMAGE%
+                    """
                 }
             }
         }
@@ -71,17 +70,13 @@ pipeline {
     post {
         always {
             script {
-                if (env.DOCKERHUB_REPOSITORY && params.IMAGE_TAG) {
-                    bat """
-                    docker image rm %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% 2>nul
-                    """
-                }
-                if (env.TEST_IMAGE) {
-                    bat """
-                    docker image rm %TEST_IMAGE% 2>nul
-                    """
-                }
-                bat "docker logout" 
+                bat """
+                docker image inspect %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% >nul 2>&1 && docker image rm %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% 2>nul
+                if not "%TEST_IMAGE%"=="" (
+                    docker image inspect %TEST_IMAGE% >nul 2>&1 && docker image rm %TEST_IMAGE% 2>nul
+                )
+                docker logout >nul 2>&1
+                """
             }
         }
     }
