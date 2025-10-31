@@ -56,10 +56,10 @@ pipeline {
                 bat '''
                 powershell -NoProfile -Command "& {
                     $output = docker run --rm %TEST_IMAGE% add 2 3;
-                    Write-Host 'Container output:';
+                    Write-Host ""Container output:"";
                     Write-Host $output;
-                    if ($output -notmatch 'Result:\s+5') {
-                        Write-Error 'Unexpected calculator result';
+                    if ($output -notmatch ""Result:\s+5"") {
+                        Write-Error ""Unexpected calculator result"";
                         exit 1
                     }
                 }"
