@@ -42,7 +42,7 @@ Configure the Jenkins toolchain with a JDK 17 installation labeled `Temurin-17` 
 1. Logs in with credentials stored in Jenkins (ID `dockerhub-credentials`).
 2. Pulls a source image tag (default `latest`) from `docker.io/dyer-m4ker/helm-task-hod`.
 3. Re-tags and pushes it with a build-specific test tag (e.g., `test-42`).
-4. Runs the container to smoke-test the calculator output.
+4. Runs the container to smoke-test the calculator output via `scripts/smoke-test.ps1`.
 
 Pipeline parameters:
 
@@ -50,6 +50,10 @@ Pipeline parameters:
 - `TEST_TAG` – Prefix used for the generated test tag (`<TEST_TAG>-<BUILD_NUMBER>`).
 
 Set up Docker Hub access following `docs/dockerhub-setup.md`.
+
+### Smoke Test Script
+
+`scripts/smoke-test.ps1` launches the promoted image (`add 2 3`) and validates the expected response. Jenkins invokes it during the CD pipeline to keep the Groovy pipeline definition simple.
 
 ## Usage
 

@@ -15,7 +15,6 @@ pipeline {
         DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
     }
 
-
     stages {
         stage('Checkout') {
             steps {
@@ -27,11 +26,10 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS, usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
                     withEnv(["SOURCE_IMAGE=${env.DOCKERHUB_REPOSITORY}:${params.IMAGE_TAG}"]) {
-                        bat '''
-                        powershell -NoProfile -Command ^
-                          "$Env:DOCKERHUB_PASSWORD | docker login --username $Env:DOCKERHUB_USER --password-stdin"
+                        bat """
+                        powershell -NoProfile -Command "$Env:DOCKERHUB_PASSWORD | docker login --username $Env:DOCKERHUB_USER --password-stdin"
                         docker pull %SOURCE_IMAGE%
-                        '''
+                        """
                     }
                 }
             }
@@ -54,7 +52,9 @@ pipeline {
         stage('Smoke Test Container') {
             steps {
                 withEnv(["TEST_IMAGE=${env.TEST_IMAGE}"]) {
-                    bat '''powershell -NoProfile -Command "$output = (docker run --rm %TEST_IMAGE% add 2 3).Trim(); Write-Host 'Container output:'; Write-Host $output; if ($output -notmatch 'Result{0,1}:\s+5(\.0)?') { Write-Error 'Unexpected calculator result'; exit 1 }"'''
+                    bat """
+                    powershell -NoProfile -File scripts\\smoke-test.ps1 -Image %TEST_IMAGE%
+                    """
                 }
             }
         }
@@ -63,13 +63,13 @@ pipeline {
     post {
         always {
             script {
-                bat '''
+                bat """
                 docker image inspect %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% >nul 2>&1 && docker image rm %DOCKERHUB_REPOSITORY%:%IMAGE_TAG% 2>nul
                 if not "%TEST_IMAGE%"=="" (
                     docker image inspect %TEST_IMAGE% >nul 2>&1 && docker image rm %TEST_IMAGE% 2>nul
                 )
                 docker logout >nul 2>&1
-                '''
+                """
             }
         }
     }
