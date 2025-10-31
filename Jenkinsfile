@@ -22,6 +22,12 @@ pipeline {
             steps {
                 archiveArtifacts artifacts: 'build/libs/calculator-cli.jar', fingerprint: true, onlyIfSuccessful: true
                 junit 'build/test-results/test/*.xml'
+                jacoco(
+                        execPattern: 'build/jacoco/test.exec',
+                        classPattern: 'build/classes/java/main',
+                        sourcePattern: 'src/main/java',
+                        changeBuildStatus: true
+                )
             }
         }
 
