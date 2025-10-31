@@ -4,22 +4,30 @@ Simple Java command line calculator packaged as an executable JAR.
 
 ## Build
 
+Run the Gradle wrapper to compile, test, and package the CLI:
+
 ```powershell
-mkdir -Force out\classes
-javac -d out\classes src\main\java\com\example\calculator\*.java
-jar --create --file out\calculator-cli.jar --main-class com.example.calculator.CalculatorCLI -C out\classes .
+.\gradlew clean build
+```
+
+The runnable JAR is produced at `build\libs\calculator-cli.jar`.
+
+Run tests independently:
+
+```powershell
+.\gradlew test
 ```
 
 ## Usage
 
 ```powershell
-java -jar out\calculator-cli.jar add 4 5
+java -jar build\libs\calculator-cli.jar add 4 5
 ```
 
 Supported operations: `add`, `subtract`, `multiply`, `divide`.
 
-Display help:
+Show usage:
 
 ```powershell
-java -jar out\calculator-cli.jar --help
+java -jar build\libs\calculator-cli.jar --help
 ```

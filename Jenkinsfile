@@ -5,10 +5,6 @@ pipeline {
         jdk 'Temurin-17'
     }
 
-    environment {
-        MAVEN_OPTS = '-Dmaven.repo.local=.m2'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -16,34 +12,16 @@ pipeline {
             }
         }
 
-        stage('Clean Workspace') {
+        stage('Gradle Build') {
             steps {
-                bat """
-                if exist out rmdir /S /Q out
-                """
-            }
-        }
-
-        stage('Compile') {
-            steps {
-                bat """
-                mkdir out\\classes
-                javac -d out\\classes src\\main\\java\\com\\example\\calculator\\*.java
-                """
-            }
-        }
-
-        stage('Package JAR') {
-            steps {
-                bat """
-                jar --create --file out\\calculator-cli.jar --main-class com.example.calculator.CalculatorCLI -C out\\classes .
-                """
+                bat '.\\gradlew.bat clean build'
             }
         }
 
         stage('Archive Artifact') {
             steps {
-                archiveArtifacts artifacts: 'out/calculator-cli.jar', fingerprint: true, onlyIfSuccessful: true
+                archiveArtifacts artifacts: 'build/libs/calculator-cli.jar', fingerprint: true, onlyIfSuccessful: true
+                junit 'build/test-results/test/*.xml'
             }
         }
 
